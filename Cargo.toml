@@ -1,0 +1,24 @@
+[package]
+name = "natray"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wgpu = "29"
+winit = "0.30"
+egui = "0.35"
+egui-wgpu = { version = "0.35", features = ["winit"] }
+egui-winit = "0.35"
+glam = { version = "0.33", features = ["bytemuck"] }
+bytemuck = { version = "1", features = ["derive"] }
+pollster = "0.4"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "hdr"] }
+anyhow = "1"
+half = { version = "2", features = ["bytemuck"] }
+
+[profile.release]
+debug = false
+opt-level = 3
+
+[profile.dev]
+opt-level = 2
