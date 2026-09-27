@@ -583,7 +583,7 @@ impl State {
                         }
                     }
                 });
-                ui.add(egui::Slider::new(&mut s.speed, 50.0..=1200.0).text("speed at impact").suffix(" m/s"));
+                ui.add(egui::Slider::new(&mut s.speed, 20.0..=1200.0).logarithmic(true).text("speed at impact").suffix(" m/s"));
                 ui.add(egui::Slider::new(&mut s.caliber_mm, 4.0..=12.0).text("caliber").suffix(" mm"));
                 ui.add(egui::Slider::new(&mut s.mass_g, 0.2..=20.0).logarithmic(true).text("bullet mass").suffix(" g"));
                 ui.add(egui::Slider::new(&mut s.spin_rpm, 0.0..=400_000.0).text("spin").suffix(" rpm"));
@@ -612,9 +612,12 @@ impl State {
         ui.separator();
         ui.add(egui::Slider::new(&mut p.balloon_diameter_cm, 8.0..=24.0).text("balloon diameter").suffix(" cm"));
         ui.add(egui::Slider::new(&mut p.balloon_height, 0.25..=1.2).text("hanging height").suffix(" m"));
-        ui.add(egui::Slider::new(&mut p.rubber_tension, 60.0..=300.0).text("rubber tension").suffix(" N/m"));
-        ui.add(egui::Slider::new(&mut p.rubber_strength, 1.05..=2.5).text("rubber strength"));
-        ui.add(egui::Slider::new(&mut p.rubber_thickness_mm, 0.1..=0.6).text("rubber thickness").suffix(" mm"));
+        // An uninflated balloon at least as big as the water only sags around it.
+        let rest_max = 0.7 * p.balloon_diameter_cm;
+        ui.add(egui::Slider::new(&mut p.rubber_rest_diameter_cm, 2.0..=rest_max).text("uninflated diameter").suffix(" cm"));
+        ui.add(egui::Slider::new(&mut p.rubber_modulus_mpa, 0.1..=10.0).logarithmic(true).text("rubber stiffness").suffix(" MPa"));
+        ui.add(egui::Slider::new(&mut p.rubber_break_stretch, 2.0..=20.0).text("stretch the rubber breaks at").suffix("×"));
+        ui.add(egui::Slider::new(&mut p.rubber_thickness_mm, 0.1..=2.0).logarithmic(true).text("rubber thickness").suffix(" mm"));
         ui.add(egui::Slider::new(&mut p.gravity, 0.0..=25.0).text("gravity").suffix(" m/s²"));
         ui.add(egui::Slider::new(&mut p.spray_amount, 0.0..=3.0).text("spray amount"));
         ui.add(egui::Slider::new(&mut p.mist_amount, 0.0..=3.0).text("mist amount"));

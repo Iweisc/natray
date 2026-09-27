@@ -1,5 +1,6 @@
 mod app;
 mod balloon;
+mod bullet;
 mod cache;
 mod capture;
 mod env;

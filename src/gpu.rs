@@ -239,9 +239,13 @@ pub fn texture(
 }
 
 pub fn read_buffer(gpu: &Gpu, buf: &wgpu::Buffer, size: u64) -> Vec<u8> {
+    read_buffer_at(gpu, buf, 0, size)
+}
+
+pub fn read_buffer_at(gpu: &Gpu, buf: &wgpu::Buffer, offset: u64, size: u64) -> Vec<u8> {
     let staging = gpu.buffer("readback", size, wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST);
     let mut enc = gpu.device.create_command_encoder(&Default::default());
-    enc.copy_buffer_to_buffer(buf, 0, &staging, 0, size);
+    enc.copy_buffer_to_buffer(buf, offset, &staging, 0, size);
     gpu.queue.submit([enc.finish()]);
     let slice = staging.slice(..size);
     slice.map_async(wgpu::MapMode::Read, |_| {});
