@@ -116,9 +116,13 @@ pub struct SimParams {
     pub shots: Vec<Shot>,
     pub balloon_diameter_cm: f32,
     pub balloon_height: f32,
-    pub rubber_tension: f32,
-    pub rubber_stretch: f32,
-    pub rubber_strength: f32,
+    /// Small-strain shear modulus of the latex.
+    pub rubber_modulus_mpa: f32,
+    /// Across the balloon before it is filled.
+    pub rubber_rest_diameter_cm: f32,
+    /// How far the latex stretches before it breaks.
+    pub rubber_break_stretch: f32,
+    /// Before it is filled.
     pub rubber_thickness_mm: f32,
     pub gravity: f32,
     pub spray_amount: f32,
@@ -142,9 +146,10 @@ impl Default for SimParams {
             shots: vec![Shot::default()],
             balloon_diameter_cm: 16.0,
             balloon_height: 0.55,
-            rubber_tension: 140.0,
-            rubber_stretch: 2.2,
-            rubber_strength: 1.5,
+            rubber_modulus_mpa: 0.42,
+            rubber_rest_diameter_cm: 6.0,
+            // Moulinet and Adda-Bedia, PRL 115, 184301 (2015).
+            rubber_break_stretch: 7.0,
             rubber_thickness_mm: 0.25,
             gravity: 9.81,
             spray_amount: 1.0,
@@ -233,9 +238,9 @@ pub fn set_kv(sim: &mut SimParams, look: &mut LookParams, key: &str, v: &str) ->
         "delay" => s.delay_ms = parse(v)?,
         "diameter" => sim.balloon_diameter_cm = parse(v)?,
         "height" => sim.balloon_height = parse(v)?,
-        "tension" => sim.rubber_tension = parse(v)?,
-        "stretch" => sim.rubber_stretch = parse(v)?,
-        "strength" => sim.rubber_strength = parse(v)?,
+        "modulus" => sim.rubber_modulus_mpa = parse(v)?,
+        "rest_diameter" => sim.rubber_rest_diameter_cm = parse(v)?,
+        "break_stretch" => sim.rubber_break_stretch = parse(v)?,
         "thickness" => sim.rubber_thickness_mm = parse(v)?,
         "gravity" => sim.gravity = parse(v)?,
         "spray" => sim.spray_amount = parse(v)?,

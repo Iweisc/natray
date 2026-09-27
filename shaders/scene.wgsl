@@ -34,6 +34,9 @@ const K_BULLET: u32 = 4u;
 const K_STRING: u32 = 5u;
 const K_KNOT: u32 = 6u;
 const IOR_W: f32 = 1.333;
+// Water within this many particle spacings behind rubber is taken to be in contact with it.
+// The rubber sits half a spacing out from the outermost particles.
+const RUBBER_CONTACT: f32 = 3.0;
 // Absorption of pure water (1/m) at roughly 650, 550 and 450 nm.
 const SIGMA_WATER: vec3f = vec3f(0.35, 0.06, 0.018);
 const CAUSTIC_RES: u32 = 256u;
@@ -631,8 +634,12 @@ fn shade(ro0: vec3f, rd0: vec3f, seed: ptr<function, u32>) -> Shaded {
     var seg_len_total = 0.0;
     let lod_bg = F.jitter.w;
     let max_seg = i32(F.flags.y) + 4;
+    // Set on going in through rubber: its outward normal, for water right behind it.
+    var wet_n = vec3f(0.0);
     for (var seg = 0; seg < max_seg; seg++) {
         let h = trace_all(ro, rd, 1e-5, inside, true, f32(max(seg - 1, 0)));
+        let behind_rubber = dot(wet_n, wet_n) > 0.0 && h.t < RUBBER_CONTACT * F.water.y;
+        wet_n = vec3f(0.0);
         if (seg == 0) {
             out.depth = h.t;
             let m = mist_march(ro, rd, h.t, seed);
@@ -676,17 +683,30 @@ fn shade(ro0: vec3f, rd0: vec3f, seed: ptr<function, u32>) -> Shaded {
             L += T * shade_rubber(p, h.n, rd, fl, rough, rough * 9.0);
             T *= fl.direct;
             ro = p + rd * 2e-5;
+            if (!inside) { wet_n = select(h.n, -h.n, dot(h.n, rd) > 0.0); }
             if (max(T.x, max(T.y, T.z)) < 0.004) { break; }
             continue;
         }
         // Water interface.
         let n = h.n;
-        let nf = select(n, -n, inside);
+        var nf = select(n, -n, inside);
+        if (behind_rubber) {
+            // Rubber lies on the water with nothing between: the surface is the rubber's,
+            // whose outside reflection is already in shade_rubber, and rubber against water
+            // reflects next to nothing. The particles' surface is a little inside it and
+            // rougher, and would add a second reflection.
+            nf = wet_n;
+        } else if (inside) {
+            // On the way out, the reflection back in happens at the rubber's outside, which
+            // is smooth. The thin rubber doesn't change the angle it starts at.
+            let m = trace_mem(p, rd, 0.0, RUBBER_CONTACT * F.water.y);
+            if (m.tri != 0xffffffffu) { nf = select(m.n, -m.n, dot(m.n, rd) > 0.0); }
+        }
         let cos_i = clamp(-dot(rd, nf), 0.0, 1.0);
         let eta = select(1.0 / IOR_W, IOR_W, inside);
-        let fr = fresnel_dielectric(cos_i, eta);
+        let fr = select(fresnel_dielectric(cos_i, eta), 0.0, behind_rubber);
         let refl = reflect(rd, nf);
-        if (!inside) {
+        if (!inside && !behind_rubber) {
             L += T * fr * cheap_radiance(p, refl, 0.5);
             L += T * ggx_spec(nf, -rd, F.sun_dir.xyz, 0.035, vec3f(0.02)) * F.sun_col.rgb * max(dot(nf, F.sun_dir.xyz), 0.0);
         }
@@ -762,8 +782,11 @@ fn photons(@builtin(global_invocation_id) gid: vec3u) {
     var rd = -L;
     var flux = vec3f(1.0);
     var inside = false;
+    var wet_n = vec3f(0.0);
     for (var seg = 0; seg < 10; seg++) {
         let h = trace_all(ro, rd, 1e-5, inside, false, 1.0);
+        let behind_rubber = dot(wet_n, wet_n) > 0.0 && h.t < RUBBER_CONTACT * F.water.y;
+        wet_n = vec3f(0.0);
         if (inside) { flux *= exp(-SIGMA_WATER * select(h.t, 0.0, h.kind == K_NONE)); }
         if (h.kind == K_NONE) { return; }
         let p = ro + rd * h.t;
@@ -775,10 +798,18 @@ fn photons(@builtin(global_invocation_id) gid: vec3u) {
             let fl = film(film_thickness_mm(h.id), abs(dot(rd, h.n)));
             flux *= fl.direct + 0.5 * fl.scatter * F.rubber2.rgb * fl.tint;
             ro = p + rd * 2e-5;
+            if (!inside) { wet_n = select(h.n, -h.n, dot(h.n, rd) > 0.0); }
             continue;
         }
         if (h.kind != K_WATER) { return; }
-        let nf = select(h.n, -h.n, inside);
+        // Same as in shade(): water right under the rubber bends light at the rubber's shape.
+        var nf = select(h.n, -h.n, inside);
+        if (behind_rubber) {
+            nf = wet_n;
+        } else if (inside) {
+            let m = trace_mem(p, rd, 0.0, RUBBER_CONTACT * F.water.y);
+            if (m.tri != 0xffffffffu) { nf = select(m.n, -m.n, dot(m.n, rd) > 0.0); }
+        }
         let cos_i = clamp(-dot(rd, nf), 0.0, 1.0);
         let eta = select(1.0 / IOR_W, IOR_W, inside);
         let refr = refract(rd, nf, eta);
@@ -786,7 +817,7 @@ fn photons(@builtin(global_invocation_id) gid: vec3u) {
         if (dot(refr, refr) < 1e-6) {
             rd = reflect(rd, nf);
         } else {
-            flux *= 1.0 - fresnel_dielectric(cos_i, eta);
+            flux *= 1.0 - select(fresnel_dielectric(cos_i, eta), 0.0, behind_rubber);
             rd = refr;
         }
         ro = p + rd * step;
