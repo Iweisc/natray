@@ -47,7 +47,7 @@ fn body_share(nose: Nose) -> f64 {
 }
 
 /// Radius of the body `u` from the base. Matches bullet_sdf in scene.wgsl.
-fn profile(nose: Nose, r: f64, len: f64, u: f64) -> f64 {
+pub fn profile(nose: Nose, r: f64, len: f64, u: f64) -> f64 {
     if nose == Nose::Sphere {
         return (r * r - (u - r).powi(2)).max(0.0).sqrt();
     }
@@ -101,7 +101,7 @@ pub struct Body {
 }
 
 impl Body {
-    fn new(s: &Shot) -> Self {
+    pub fn new(s: &Shot) -> Self {
         let nose = s.bullet.nose;
         let r = 0.5 * s.caliber_mm as f64 * 1e-3;
         let mass = s.mass_g as f64 * 1e-3;
@@ -626,6 +626,19 @@ impl Flight {
         let pull = (rho * PI * b.radius * b.radius * speed * speed * b.length / b.iy).sqrt();
         let ds = if fill > 0.0 { 2e-4 } else { 0.02 };
         (0.05 / (tumble + b.ix * p.abs() / b.iy + pull)).min(ds / speed)
+    }
+
+    /// Where the simulation takes over: centre of mass, velocity, axis, angular momentum and
+    /// roll.
+    pub fn handoff(&self) -> (DVec3, DVec3, DVec3, DVec3, f64) {
+        let s = &self.handoff;
+        (s.x, s.u, s.n, s.h, s.roll)
+    }
+
+    /// Adds where the simulation had the bullet at `t`, after every pose so far.
+    pub fn push_pose(&mut self, t: f64, x: DVec3, u: DVec3, n: DVec3, roll: f64) {
+        let spin = self.poses.last().map_or(0.0, |p| (roll - p.roll) / (t - p.t).max(1e-12));
+        self.poses.push(Pose { t, x, u, n, roll, spin, loads: Loads::default() });
     }
 
     fn pose(&self, t: f64, s: &State, loads: Loads) -> Pose {

@@ -1,6 +1,6 @@
 //! Ready-made scenes: what to simulate, how it looks and where the camera starts.
 
-use crate::params::{LookParams, Shot, SimParams, M855, WADCUTTER};
+use crate::params::{LookParams, Shot, SimParams, BB, M855, WADCUTTER};
 
 #[derive(Clone, Copy)]
 pub struct View {
@@ -28,10 +28,13 @@ pub fn all() -> Vec<Preset> {
         },
         Preset {
             name: "Tumbling rifle round",
-            about: "A long rifle bullet turns sideways in the water, so the exit blows out far wider than the entry.",
+            about: "A long rifle bullet turns sideways in a big, thick-walled balloon, so the exit blows out far wider than the entry.",
             sim: SimParams {
                 shots: vec![Shot { speed: 500.0, ..Shot::with_bullet(M855) }],
                 balloon_diameter_cm: 22.0,
+                // Its neck carries 5.6 L of water.
+                rubber_rest_diameter_cm: 8.0,
+                rubber_thickness_mm: 0.5,
                 ..SimParams::default()
             },
             look: LookParams { balloon_color: [0.05, 0.25, 0.9], ..LookParams::default() },
@@ -79,15 +82,27 @@ pub fn all() -> Vec<Preset> {
         },
         Preset {
             name: "Slow pellet",
-            about: "A slow airgun pellet. Weak, tight rubber tears all the way round and the water keeps the balloon's shape for a moment.",
+            about: "A slow airgun pellet into a small balloon filled far past its size. The hole tears all the way round and the water keeps the balloon's shape for a moment.",
             sim: SimParams {
                 shots: vec![Shot { speed: 120.0, ..Shot::with_bullet(WADCUTTER) }],
-                rubber_strength: 1.15,
-                rubber_tension: 200.0,
+                balloon_diameter_cm: 12.0,
+                rubber_rest_diameter_cm: 3.2,
                 ..SimParams::default()
             },
             look: LookParams { balloon_color: [0.9, 0.1, 0.45], ..LookParams::default() },
             view: View { yaw: -35.0, pitch: 8.0, dist: 0.8 },
+        },
+        Preset {
+            name: "Bounce",
+            about: "A steel BB at 40 m/s against a thick, stiff balloon. The wall gives a millimetre and throws it back.",
+            sim: SimParams {
+                shots: vec![Shot { speed: 40.0, ..Shot::with_bullet(BB) }],
+                rubber_thickness_mm: 1.5,
+                rubber_modulus_mpa: 4.0,
+                ..SimParams::default()
+            },
+            look: LookParams { balloon_color: [0.05, 0.55, 0.55], ..LookParams::default() },
+            view: View { yaw: -150.0, pitch: 6.0, dist: 0.5 },
         },
     ]
 }

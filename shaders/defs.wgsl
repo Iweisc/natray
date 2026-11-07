@@ -38,7 +38,7 @@ struct CMap { center: vec4f, u_axis: vec4f, v_axis: vec4f, ground: vec4f }
 // while still part of the crown sheet).
 struct Particle { pos: vec4f, vel: vec4f }
 struct Spray { pos: vec4f, vel: vec4f }
-struct Tri { v0: u32, v1: u32, v2: u32, rest_area: f32, e0: u32, e1: u32, e2: u32, pad: u32 }
+struct Tri { v0: u32, v1: u32, v2: u32, rest_area: f32, dm_inv: vec4f }
 
 // Water bricks are 8^3 cells stored as 9^3 texels: the extra texel on the + side of each
 // axis repeats the neighbour's first cell so filtering never has to cross into another brick.
